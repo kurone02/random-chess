@@ -56,8 +56,8 @@ function Leaderboard() {
                                 <tr>
                                     <th>#</th>
                                     <th>Username</th>
-                                    <th>Problem sovled</th>
-                                    <th>Total coins</th>
+                                    <th>#Matches</th>
+                                    <th>Elo</th>
                                 </tr>
                             </thead>
                             <tbody>

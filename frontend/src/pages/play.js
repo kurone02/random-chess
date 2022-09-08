@@ -137,10 +137,17 @@ function ShowBoard() {
             <NavBar/>
 
             <br/>
+
             <Container>
                 <Row>
-                    <Col sm={9}>
-                        <Board />
+                    <Col id="board_area" sm={6}>
+                        <Board/>
+                    </Col>
+
+                    <Col sm={3}>
+                        <Card style={{ width: "40%", height: "5rem" }} >
+                            <Button variant="success" style={{height: "100%"}}><b>Custom match</b></Button>
+                        </Card>
                     </Col>
 
                     <Col sm={3}>
