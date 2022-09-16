@@ -22,6 +22,7 @@ export default function Profile() {
             console.log(data);
             setInfo({
                 username: data.username,
+                number_of_matches: data.number_of_matches,
                 elo: data.elo
             });
         }
@@ -42,7 +43,7 @@ export default function Profile() {
                             Username: {info.username}
                         </Card.Text>
                         <Card.Text>
-                            #Matches: N/A
+                            #Matches: {info.number_of_matches}
                         </Card.Text>
                         <Card.Text>
                             Elo: {info.elo}

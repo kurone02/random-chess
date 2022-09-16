@@ -8,18 +8,29 @@ import Ranking from '../components/ranking';
 
 function Leaderboard() {
 
-    // const [data, setData] = useState(0);
-    // const [rank, setRank] = useState({i: 0});
-    // async function get_accounts() {
-    //     const res = await fetch("http://localhost:2022/accounts");
-    //     const acc = await res.json();
-    //     setData(acc);
-    // }
-    // useEffect(() => {
-    //     console.log(data, !!data.accounts);
-    //     if(data.accounts) return;
-    //     get_accounts();
-    // }, []);
+    const [scoreboard, setScoreboard] = useState([]);
+
+    useEffect(() => {
+        let ignore = false;
+
+        async function fetchData() {
+            if(ignore) return;
+            const res = await fetch(`http://localhost:8000/api/user`, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+            const data = await res.json();
+            console.log(data);
+            data.sort();
+
+            setScoreboard(data);
+        }
+
+        fetchData();
+        return () => { ignore = true; }        
+    }, []);
 
     // console.log(data);
 
@@ -61,68 +72,20 @@ function Leaderboard() {
                                 </tr>
                             </thead>
                             <tbody>
-                                
-                                <tr>
-                                    <td>1</td>
-                                    <td>Admin</td>
-                                    <td>3</td>
-                                    <td>309</td>
-                                </tr>
-                                <tr>
-                                    <td>2</td>
-                                    <td>Tester01</td>
-                                    <td>5</td>
-                                    <td>15</td>
-                                </tr>
-                                <tr>
-                                    <td>3</td>
-                                    <td>Tester02</td>
-                                    <td>4</td>
-                                    <td>12</td>
-                                </tr>
-                                <tr>
-                                    <td>4</td>
-                                    <td>Tester03</td>
-                                    <td>3</td>
-                                    <td>9</td>
-                                </tr>
-                                <tr>
-                                    <td>5</td>
-                                    <td>Tester04</td>
-                                    <td>2</td>
-                                    <td>6</td>
-                                </tr>
-                                <tr>
-                                    <td>6</td>
-                                    <td>Tester05</td>
-                                    <td>1</td>
-                                    <td>3</td>
-                                </tr>
-                                <tr>
-                                    <td>7</td>
-                                    <td>Tester06</td>
-                                    <td>0</td>
-                                    <td>0</td>
-                                </tr>
-                                <tr>
-                                    <td>8</td>
-                                    <td>Tester07</td>
-                                    <td>0</td>
-                                    <td>0</td>
-                                </tr>
-                                <tr>
-                                    <td>9</td>
-                                    <td>Tester08</td>
-                                    <td>0</td>
-                                    <td>0</td>
-                                </tr>
-                                <tr>
-                                    <td>10</td>
-                                    <td>Tester09</td>
-                                    <td>0</td>
-                                    <td>0</td>
-                                </tr>
-                                
+
+                                {
+                                    scoreboard.map((acc, id) => {
+                                        return (
+                                            <tr key={id}>
+                                                <td>{id + 1}</td>
+                                                <td>{acc.username}</td>
+                                                <td>{acc.number_of_matches}</td>
+                                                <td>{acc.elo}</td>
+                                            </tr>
+                                        );
+                                    })
+                                }
+                                                                
                                 
                             </tbody>
                         </Table>

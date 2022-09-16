@@ -1,7 +1,34 @@
+import { useEffect, useState } from "react";
 import { Table, Card } from "react-bootstrap";
 
 
 export default function Ranking() {
+
+    const [scoreboard, setScoreboard] = useState([]);
+
+    useEffect(() => {
+        let ignore = false;
+
+        async function fetchData() {
+            if(ignore) return;
+            const res = await fetch(`http://localhost:8000/api/user/?top=5`, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+            const data = await res.json();
+            console.log(data);
+            data.sort();
+
+            setScoreboard(data);
+        }
+
+        fetchData();
+        return () => { ignore = true; }        
+    }, []);
+
+
     return (
         <Card style={{ width: '15rem', margin: '10px' }}>
             <Card.Header>Top players</Card.Header>
@@ -14,31 +41,17 @@ export default function Ranking() {
                     </tr>
                 </thead>
                 <tbody>
-                    <tr>
-                    <td>1</td>
-                    <td>Admin</td>
-                    <td>309</td>
-                    </tr>
-                    <tr>
-                    <td>2</td>
-                    <td>Tester01</td>
-                    <td>15</td>
-                    </tr>
-                    <tr>
-                    <td>3</td>
-                    <td>Tester02</td>
-                    <td>12</td>
-                    </tr>
-                    <tr>
-                    <td>4</td>
-                    <td>Tester03</td>
-                    <td>9</td>
-                    </tr>
-                    <tr>
-                    <td>5</td>
-                    <td>Tester04</td>
-                    <td>6</td>
-                    </tr>
+                    {
+                        scoreboard.map((acc, id) => {
+                            return (
+                                <tr key={id}>
+                                    <td>{id + 1}</td>
+                                    <td>{acc.username}</td>
+                                    <td>{acc.elo}</td>
+                                </tr>
+                            );
+                        })
+                    }
                 </tbody>
                 </Table>
         </Card>
