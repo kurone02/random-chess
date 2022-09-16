@@ -9,6 +9,17 @@ from rest_framework.response import Response
 
 # Create your views here.
 
+
+# Socket views
+def move(request, match_id):
+    return render(request, 'move.html', {
+        'match_id': match_id
+    })
+
+
+
+# Model views
+
 class UserView(viewsets.ModelViewSet):
     queryset = User.objects.all()
     serializer_class = UserSerializer
@@ -30,12 +41,26 @@ class UserView(viewsets.ModelViewSet):
     def getinfo(self, request, pk=None):
         try:
             user = self.queryset.get(username=request.query_params["username"])
+            in_game = None if not user.in_game else user.in_game.id
             return Response({
                 "username": user.username, 
+                "number_of_matches": user.number_of_matches,
+                "in_game": in_game,
                 "elo": user.elo
             })
         except User.DoesNotExist:
             return Response( {"status": "failed", "reason": "User doesnot exist"} )
+
+    @action(detail=False, methods=["get"])
+    def getrank(self, request, pk=None):
+
+        players = self.queryset.order_by("-elo", "number_of_matches")
+        if "top" in request.query_params:
+            players = players[:int(request.query_params["top"])]
+        
+        serializer = self.serializer_class(players, many=True, context={'request': request})
+
+        return Response(serializer.data)
 
 
 
@@ -51,17 +76,11 @@ class MatchView(viewsets.ModelViewSet):
             queried_user = User.objects.get(username=username)
             new_match = Match(host=queried_user)
 
-            print(queried_user.in_game)
-
             if queried_user.in_game:
                 return Response( {"status": "failed", "reason": "User is already in a game"} )
 
-            if "color" not in request.data:
-                new_match.white_player = queried_user
-            elif request.data["color"] == "black":
-                new_match.black_player = queried_user
-            else:
-                new_match.white_player = queried_user
+            new_match.white_player = queried_user
+            new_match.white_points = 7
             new_match.fen = "ppppkppp/pppppppp/8/8/8/8/PPPPPPPP/PPPPKPPP w - - 0 1"
             new_match.status = Match.Status.WAITING
             new_match.save()
@@ -73,3 +92,63 @@ class MatchView(viewsets.ModelViewSet):
 
         except User.DoesNotExist:
             return Response( {"status": "failed", "reason": "User doesnot exist"} )
+
+
+    @action(detail=False, methods=["post"])
+    def join(self, request, pk=None):
+        username = request.data["username"]
+        password = request.data["password"]
+
+        try:
+            queried_user = User.objects.get(username=username)
+            if not queried_user.check_password(password):
+                return Response( {"status": "failed", "reason": "Wrong password"} )
+        except User.DoesNotExist:
+            return Response( {"status": "failed", "reason": "User doesnot exist"} )
+
+        match_id = int(request.data["match_id"])
+        try:
+            queried_user = User.objects.get(username=username)
+            queried_match = Match.objects.get(id=match_id)
+            if queried_match.black_player is not None:
+                return Response( {"status": "failed", "reason": "Match is full"} )
+            queried_match.black_player = queried_user
+            queried_match.black_points = 6
+            queried_user.in_game = queried_match
+            queried_match.status = Match.Status.ONGOING
+            queried_match.save()
+            queried_user.save()
+            return Response( {"status": "ok"} )
+        except Match.DoesNotExist:
+            return Response( {"status": "failed", "reason": "Match doesnot exist"} )
+
+
+    @action(detail=False, methods=["post"])
+    def resign(self, request, pk=None):
+        username = request.data["username"]
+        password = request.data["password"]
+
+        try:
+            queried_user = User.objects.get(username=username)
+            if not queried_user.check_password(password):
+                return Response( {"status": "failed", "reason": "Wrong password"} )
+        except User.DoesNotExist:
+            return Response( {"status": "failed", "reason": "User doesnot exist"} )
+
+        match_id = int(request.data["match_id"])
+        try:
+            queried_user = User.objects.get(username=username)
+            queried_match = Match.objects.get(id=match_id)
+            queried_match.white_player.in_game = None
+            queried_match.white_player.save()
+            if queried_match.black_player is not None:
+                queried_match.black_player.in_game = None
+                queried_match.black_player.save()
+            if queried_user.username == queried_match.white_player:
+                queried_match.status = Match.Status.BLACK
+            else:
+                queried_match.status = Match.Status.WHITE
+            queried_match.save()
+            return Response( {"status": "ok"} )
+        except Match.DoesNotExist:
+            return Response( {"status": "failed", "reason": "Match doesnot exist"} )

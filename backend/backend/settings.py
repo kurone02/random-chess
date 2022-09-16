@@ -40,6 +40,7 @@ INSTALLED_APPS = [
     'api',
     'corsheaders',
     'rest_framework',
+    'channels',
 ]
 
 MIDDLEWARE = [
@@ -131,3 +132,14 @@ CORS_ORIGIN_WHITELIST = [
 ]
 
 AUTH_USER_MODEL = 'api.User' 
+
+ASGI_APPLICATION = 'backend.asgi.application'
+
+CHANNEL_LAYERS = {
+    'default': {
+        'BACKEND': 'channels_redis.core.RedisChannelLayer',
+        'CONFIG': {
+            "hosts": ['redis://localhost:6379/4']
+        },
+    },
+}

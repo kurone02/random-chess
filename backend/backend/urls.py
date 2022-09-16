@@ -24,5 +24,7 @@ router.register(r'match', views.MatchView)
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+    path("ws/move/<str:match_id>", views.move),
+    path("ws/resign/<str:match_id>", views.move),
     path("api/", include(router.urls))
 ]
