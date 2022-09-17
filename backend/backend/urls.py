@@ -26,5 +26,6 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path("ws/move/<str:match_id>", views.move),
     path("ws/resign/<str:match_id>", views.move),
+    path("ws/join/<str:match_id>", views.move),
     path("api/", include(router.urls))
 ]

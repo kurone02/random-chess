@@ -9,7 +9,7 @@ import Profile from '../components/profile';
 import ProblemList from '../components/problem_list';
 import Ranking from '../components/ranking';
 import useToken from '../useTokens';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Board from '../components/chess_board';
 
 
@@ -21,6 +21,7 @@ function ViewPlayOption() {
     const [showFindMatch, setshowFindMatch] = useState(false);
     const [showBot, setshowBot] = useState(false);
     const [matchID, setMatchID] = useState(0);
+    const socket = useRef({});
 
     const handleCustom = () => setshowCustom(true);
     const handleCancelCustom = () => setshowCustom(false);
@@ -58,6 +59,17 @@ function ViewPlayOption() {
     const handleJoinRoom = async (e) => {
         e.preventDefault();
         console.log(token);
+        socket.join = new WebSocket(`ws://localhost:8000/ws/join/${matchID}/`);
+        socket.join.onmessage = function(e) {
+            const data = JSON.parse(e.data);
+            if(data.player === token.username) return;
+            window.location.reload();
+        };
+    
+        socket.join.onclose = function(e) {
+            console.error('Chat socket closed unexpectedly');
+        };
+
         const res = await fetch(`http://localhost:8000/api/match/join/`, {
             method: 'POST',
             headers: {
@@ -76,6 +88,10 @@ function ViewPlayOption() {
             window.location.reload();
             return;
         }
+
+        socket.join.send(JSON.stringify({
+            'player': token.username
+        }));
 
         alert("Successful");
         window.location.reload();
@@ -189,19 +205,7 @@ function ShowBoard({userInfo}) {
     const { token, setToken } = useToken();
     const [info, setInfo] = useState({});
     const [matchInfo, setMatchInfo] = useState({});
-
-    const [socket, setSocket] = useState(new WebSocket("ws://localhost:8000/ws/resign/1/"));
-
-    socket.onmessage = function(e) {
-        const data = JSON.parse(e.data);
-        if(data.player === token.username) return;
-        alert("Your opponent resigns");
-        window.location.reload();
-    };
-
-    socket.onclose = function(e) {
-        console.error('Chat socket closed unexpectedly');
-    };
+    const socket = useRef({});
 
     useEffect(() => {
         let ignore = false;
@@ -230,6 +234,7 @@ function ShowBoard({userInfo}) {
                     'Content-Type': 'application/json'
                 }
             })).json() : null;
+
             setMatchInfo({
                 id: match_data.id,
                 fen: match_data.fen,
@@ -241,12 +246,42 @@ function ShowBoard({userInfo}) {
                 black_elo: (black_player)? black_player.elo : null,
                 my_points: (token.username === white_player.username)? match_data.white_points : match_data.black_points
             });
+
+            // Initialize WebSocket
+
+            socket.resign = new WebSocket(`ws://localhost:8000/ws/resign/${match_data.id}/`);
+            socket.join = new WebSocket(`ws://localhost:8000/ws/join/${match_data.id}/`);
+
+            console.log(socket);
+
+            socket.join.onmessage = function(e) {
+                const data = JSON.parse(e.data);
+                if(data.player === token.username) return;
+                window.location.reload();
+            };
+        
+            socket.join.onclose = function(e) {
+                console.error('Chat socket closed unexpectedly');
+            };
+            
+            socket.resign.onmessage = function(e) {
+                const data = JSON.parse(e.data);
+                if(data.player === token.username) return;
+                alert("Your opponent resigns");
+                window.location.reload();
+            };
+        
+            socket.resign.onclose = function(e) {
+                console.error('Chat socket closed unexpectedly');
+            };
             
         }
 
         fetchData();
         return () => { ignore = true; }        
     }, []);
+
+    
 
     const resign = async (e) => {
         const res = await fetch(`http://localhost:8000/api/match/resign/`, {
@@ -267,7 +302,7 @@ function ShowBoard({userInfo}) {
             window.location.reload();
             return;
         }
-        socket.send(JSON.stringify({
+        socket.resign.send(JSON.stringify({
             'player': token.username
         }));
         alert("Successful");

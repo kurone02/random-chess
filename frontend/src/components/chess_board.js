@@ -10,6 +10,7 @@ export default function SquareStyles({matchInfo, userInfo}) {
     const [playerTurn, setPlayerTurn] = useState((matchInfo.white_player === userInfo.username)? "w" : "b");
 
     const [chessboardSize, setChessboardSize] = useState(undefined);
+    const socket = useRef({});
 
     useEffect(() => {
         function handleResize() {
@@ -22,20 +23,44 @@ export default function SquareStyles({matchInfo, userInfo}) {
         return () => window.removeEventListener("resize", handleResize);
     }, []);
 
+    useEffect(() => {
+        let ignore = false;
+
+        function makeAMove(move, data) {
+            const gameCopy = { ...game };
+            const result = gameCopy.move(move);
+            setGame(gameCopy);
+            setMoveSquares({
+                [data.move.from]: { backgroundColor: 'rgba(255, 255, 0, 0.4)' },
+                [data.move.to]: { backgroundColor: 'rgba(255, 255, 0, 0.4)' }
+            });
+            return result; // null if the move was illegal, the move object if the move was legal
+        }
+
+        async function fetchData() {
+            if(ignore) return;
+
+            socket.move = new WebSocket(`ws://localhost:8000/ws/move/${matchInfo.id}/`);
+            socket.move.onmessage = function(e) {
+                const data = JSON.parse(e.data);
+                if(data.player === userInfo.username) return;
+                console.log(data);
+                makeAMove(data.move, data);
+            };
+        
+            socket.move.onclose = function(e) {
+                console.error('Chat socket closed unexpectedly');
+            };
+            
+        }
+
+        fetchData();
+        return () => { ignore = true; }        
+    }, []);
+
     const [rightClickedSquares, setRightClickedSquares] = useState({});
     const [moveSquares, setMoveSquares] = useState({});
     const [optionSquares, setOptionSquares] = useState({});
-    const [socket, setSocket] = useState(new WebSocket("ws://localhost:8000/ws/move/1/"));
-
-    socket.onmessage = function(e) {
-        const data = JSON.parse(e.data);
-        console.log(data);
-        setGame(new Chess(data.fen));
-    };
-
-    socket.onclose = function(e) {
-        console.error('Chat socket closed unexpectedly');
-    };
 
     function onDrop(sourceSquare, targetSquare) {
         if(playerTurn !== game.turn()) return;
@@ -52,7 +77,8 @@ export default function SquareStyles({matchInfo, userInfo}) {
             [sourceSquare]: { backgroundColor: 'rgba(255, 255, 0, 0.4)' },
             [targetSquare]: { backgroundColor: 'rgba(255, 255, 0, 0.4)' }
         });
-        socket.send(JSON.stringify({
+        socket.move.send(JSON.stringify({
+            'player': userInfo.username,
             'fen': game.fen(),
             'move': move
         }));
