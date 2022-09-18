@@ -12,6 +12,16 @@ export default function SquareStyles({matchInfo, userInfo}) {
     const [chessboardSize, setChessboardSize] = useState(undefined);
     const socket = useRef({});
 
+    const piecePoints = {
+        'p': 1,
+        'cp': 1,
+        'n': 3,
+        'b': 3,
+        'r': 5,
+        'q': 9,
+        'k': 90
+    };
+
     useEffect(() => {
         function handleResize() {
             const display = document.getElementById("board_area");
@@ -34,18 +44,22 @@ export default function SquareStyles({matchInfo, userInfo}) {
                 [data.move.from]: { backgroundColor: 'rgba(255, 255, 0, 0.4)' },
                 [data.move.to]: { backgroundColor: 'rgba(255, 255, 0, 0.4)' }
             });
+            matchInfo.my_points += 1;
+            document.getElementById("my_points").textContent = `Your Points: ${matchInfo.my_points}`;
             return result; // null if the move was illegal, the move object if the move was legal
         }
 
         async function fetchData() {
             if(ignore) return;
 
+            updateStatus();
             socket.move = new WebSocket(`ws://localhost:8000/ws/move/${matchInfo.id}/`);
             socket.move.onmessage = function(e) {
                 const data = JSON.parse(e.data);
+                console.log(data.player, userInfo.username);
                 if(data.player === userInfo.username) return;
-                console.log(data);
                 makeAMove(data.move, data);
+                updateStatus();
             };
         
             socket.move.onclose = function(e) {
@@ -53,7 +67,7 @@ export default function SquareStyles({matchInfo, userInfo}) {
             };
             
         }
-
+        
         fetchData();
         return () => { ignore = true; }        
     }, []);
@@ -61,6 +75,29 @@ export default function SquareStyles({matchInfo, userInfo}) {
     const [rightClickedSquares, setRightClickedSquares] = useState({});
     const [moveSquares, setMoveSquares] = useState({});
     const [optionSquares, setOptionSquares] = useState({});
+
+    function updateStatus() {
+        const status = document.getElementById("status");
+        if(game.turn() === 'w') status.textContent = "Status: white to move";
+        else status.textContent = "Status: black to move";
+        if(game.in_check()) status.textContent += " / checked";
+    }
+
+    function increasePoints(move) {
+        
+        // If the move capture a piece
+        if(move.flags === 'e' || move.flags === 'c' || move.flags === 'pc' || move.flags === 'cp') {
+            const gameCopy = { ...game };
+            gameCopy.undo();
+            let piece = gameCopy.get(move.to);
+            let type;
+            if(piece == null) type = 'cp';
+            else type = gameCopy.get(move.to).type;
+            gameCopy.move(move);
+            matchInfo.my_points += piecePoints[type];
+            document.getElementById("my_points").textContent = `Your Points: ${matchInfo.my_points}`;
+        }
+    }
 
     function onDrop(sourceSquare, targetSquare) {
         if(playerTurn !== game.turn()) return;
@@ -77,11 +114,15 @@ export default function SquareStyles({matchInfo, userInfo}) {
             [sourceSquare]: { backgroundColor: 'rgba(255, 255, 0, 0.4)' },
             [targetSquare]: { backgroundColor: 'rgba(255, 255, 0, 0.4)' }
         });
+
+        increasePoints(move);
+
         socket.move.send(JSON.stringify({
             'player': userInfo.username,
             'fen': game.fen(),
             'move': move
         }));
+        updateStatus();
         return true;
     }
 

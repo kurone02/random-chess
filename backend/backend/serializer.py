@@ -14,4 +14,4 @@ class PasswordSerializer(serializers.HyperlinkedModelSerializer):
 class MatchSerializer(serializers.HyperlinkedModelSerializer):
     class Meta:
         model = Match
-        fields = ['url', 'id', 'host', 'white_player', 'white_points', 'black_player', 'black_points', 'fen', 'status']
+        fields = ['url', 'id', 'host', 'white_player', 'white_points', 'white_pocket', 'black_player', 'black_points', 'black_pocket', 'fen', 'status']

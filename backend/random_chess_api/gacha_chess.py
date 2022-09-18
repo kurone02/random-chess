@@ -46,6 +46,7 @@ class GachaChess:
             return True
         try:
             if self.board.is_capture(chess.Move.from_uci(move_info)):
+                print("yo?")
                 self.current_player().points += ultils.PIECE_POINTS[self.board.piece_at(chess.Move.from_uci(move_info).to_square).symbol().lower()]
             self.history.append(self.board.fen())
             self.move_history.append(move_info)

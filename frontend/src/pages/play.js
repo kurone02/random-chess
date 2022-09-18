@@ -202,9 +202,10 @@ function ViewPlayOption() {
 
 function ShowBoard({userInfo}) {
     
+    const GACHA_PRICE = 7;
     const { token, setToken } = useToken();
     const [info, setInfo] = useState({});
-    const [matchInfo, setMatchInfo] = useState({});
+    const [matchInfo, setMatchInfo] = useState({my_pocket: {pocket: []}});
     const socket = useRef({});
 
     useEffect(() => {
@@ -244,16 +245,19 @@ function ShowBoard({userInfo}) {
                 black_player: (black_player)? black_player.username : null,
                 black_points: match_data.black_points,
                 black_elo: (black_player)? black_player.elo : null,
-                my_points: (token.username === white_player.username)? match_data.white_points : match_data.black_points
+                my_points: (token.username === white_player.username)? match_data.white_points : match_data.black_points,
+                my_pocket: (token.username === white_player.username)? match_data.white_pocket : match_data.black_pocket,
             });
 
             // Initialize WebSocket
 
             socket.resign = new WebSocket(`ws://localhost:8000/ws/resign/${match_data.id}/`);
             socket.join = new WebSocket(`ws://localhost:8000/ws/join/${match_data.id}/`);
+            socket.roll = new WebSocket(`ws://localhost:8000/ws/roll/${match_data.id}/`);
 
             console.log(socket);
 
+            // Player joins the match
             socket.join.onmessage = function(e) {
                 const data = JSON.parse(e.data);
                 if(data.player === token.username) return;
@@ -263,7 +267,8 @@ function ShowBoard({userInfo}) {
             socket.join.onclose = function(e) {
                 console.error('Chat socket closed unexpectedly');
             };
-            
+
+            // Player resigns
             socket.resign.onmessage = function(e) {
                 const data = JSON.parse(e.data);
                 if(data.player === token.username) return;
@@ -272,6 +277,21 @@ function ShowBoard({userInfo}) {
             };
         
             socket.resign.onclose = function(e) {
+                console.error('Chat socket closed unexpectedly');
+            };
+
+            // Player rolls a random piece
+            socket.roll.onmessage = function(e) {
+                const data = JSON.parse(e.data);
+                if(data.player === token.username) {
+                    console.log(data);
+                } else {
+                    console.log(data);
+                    console.log("Your opponent rolls a random piece");
+                }
+            };
+        
+            socket.roll.onclose = function(e) {
                 console.error('Chat socket closed unexpectedly');
             };
             
@@ -309,6 +329,13 @@ function ShowBoard({userInfo}) {
         window.location.reload();
     }
 
+    const rollRandomPiece = (e) => {
+        if(matchInfo.my_points < GACHA_PRICE) return;
+        socket.roll.send(JSON.stringify({
+            'player': token.username
+        }));
+    }
+
     return (
         <>
             <NavBar/>
@@ -331,17 +358,16 @@ function ShowBoard({userInfo}) {
                     <Col sm={4}>
                         <Card style={{ width: "70%", margin: '10px' }} >
                             <Card.Header>
-                                Match details
+                                Match ID: {matchInfo.id}
                                 <Button variant="danger" style={{ float: "right"}} onClick={resign}><b>Resign</b></Button>
                             </Card.Header>
                             <Card.Body>
-                                <Card.Text> Match ID: {matchInfo.id} </Card.Text>
                                 <Card.Text> White player: {matchInfo.white_player} ({matchInfo.white_elo})</Card.Text>
                                 <Card.Text> Black player: {matchInfo.black_player} ({matchInfo.black_elo})</Card.Text> 
-                                <Card.Text> Status: white to move </Card.Text> 
+                                <Card.Text id="status"> Status: white to move </Card.Text> 
                                 <center>
-                                    <Card.Text> Your Points: {matchInfo.my_points} </Card.Text>
-                                    <Button>Roll</Button>
+                                    <Card.Text id="my_points"> Your Points: {matchInfo.my_points} </Card.Text>
+                                    <Button onClick={rollRandomPiece}>Roll</Button>
                                 </center>
                                 <br></br>
                                 <Card.Text style={{ fontSize: "small" }}> Win (+102) / Lose (-13) / Draw (-1) </Card.Text> 
@@ -349,18 +375,15 @@ function ShowBoard({userInfo}) {
                         </Card>
 
                         <Card style={{ width: "70%", height: "20rem", margin: '10px' }} >
-                            <Card.Header>Move history</Card.Header>
+                            <Card.Header>Your Pocket</Card.Header>
                             <Card.Body style={{ overflow: "auto" }}>
-                                <Card.Text>1</Card.Text>
-                                <Card.Text>2</Card.Text>
-                                <Card.Text>3</Card.Text>
-                                <Card.Text>4</Card.Text>
-                                <Card.Text>5</Card.Text>
-                                <Card.Text>6</Card.Text>
-                                <Card.Text>7</Card.Text>
-                                <Card.Text>8</Card.Text>
-                                <Card.Text>9</Card.Text>
-                                <Card.Text>10</Card.Text>
+                                {
+                                    matchInfo.my_pocket.pocket.map((piece, id) => {
+                                        return (
+                                            <Card.Text key={id}>{id + 1}. {piece}</Card.Text>
+                                        )
+                                    })
+                                }
                             </Card.Body>
                         </Card>
                     </Col>
