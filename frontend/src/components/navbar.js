@@ -15,7 +15,7 @@ export default function NavBar() {
         <Navbar collapseOnSelect expand="lg" bg="dark" variant="dark">
             <Container>
                 <Navbar.Brand href="/">
-                    <img src="/logo.png" width="100" height="auto"/>
+                    <img src="/logo.png" width="40" height="auto"/>
                 </Navbar.Brand>
                 <Navbar.Toggle aria-controls="responsive-navbar-nav" />
                 <Navbar.Collapse id="responsive-navbar-nav">

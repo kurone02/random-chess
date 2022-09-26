@@ -9,7 +9,12 @@ class User(AbstractUser):
 
 
 def default_player_pocket():
-    return {"pocket": []}
+    return {
+        "n": 0,
+        "b": 0,
+        "r": 0,
+        "q": 0,
+    }
 
 
 class Match(models.Model):

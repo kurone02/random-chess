@@ -3,7 +3,7 @@ import Chess from '../ultils/chess.js';
 
 import { Chessboard } from 'react-chessboard';
 
-export default function SquareStyles({matchInfo, userInfo}) {
+export default function SquareStyles({selectPieceState, matchInfo, userInfo, randomPiece}) {
     const chessboardRef = useRef();
     const [game, setGame] = useState(new Chess(matchInfo.fen));
     const [orientation, setOrientation] = useState((matchInfo.white_player === userInfo.username)? "white" : "black");
@@ -36,7 +36,24 @@ export default function SquareStyles({matchInfo, userInfo}) {
     useEffect(() => {
         let ignore = false;
 
-        function makeAMove(move, data) {
+        async function makeAMove(move, data) {
+            console.log(data);
+            if(data.is_put) {
+                const gameCopy = { ...game };
+                gameCopy.load(data.fen);
+                setGame(gameCopy);
+                if(data.player === userInfo.username) return true;
+                const match = await fetch(`http://localhost:8000/api/match/${userInfo.in_game}`, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                const match_data = await match.json();
+                matchInfo.my_points = (playerTurn === 'w')? match_data.white_points : match_data.black_points;
+                document.getElementById("my_points").textContent = `Your Points: ${matchInfo.my_points}`;
+                return true;
+            }
             const gameCopy = { ...game };
             const result = gameCopy.move(move);
             setGame(gameCopy);
@@ -44,7 +61,14 @@ export default function SquareStyles({matchInfo, userInfo}) {
                 [data.move.from]: { backgroundColor: 'rgba(255, 255, 0, 0.4)' },
                 [data.move.to]: { backgroundColor: 'rgba(255, 255, 0, 0.4)' }
             });
-            matchInfo.my_points += 1;
+            const match = await fetch(`http://localhost:8000/api/match/${userInfo.in_game}`, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+            const match_data = await match.json();
+            matchInfo.my_points = (playerTurn === 'w')? match_data.white_points : match_data.black_points;
             document.getElementById("my_points").textContent = `Your Points: ${matchInfo.my_points}`;
             return result; // null if the move was illegal, the move object if the move was legal
         }
@@ -53,12 +77,14 @@ export default function SquareStyles({matchInfo, userInfo}) {
             if(ignore) return;
 
             updateStatus();
+            const roll_button = document.getElementById("roll_button");
+            roll_button.disabled = (playerTurn !== game.turn());
             socket.move = new WebSocket(`ws://localhost:8000/ws/move/${matchInfo.id}/`);
             socket.move.onmessage = function(e) {
                 const data = JSON.parse(e.data);
-                console.log(data.player, userInfo.username);
-                if(data.player === userInfo.username) return;
+                if(data.player === userInfo.username && !data.is_put) return;
                 makeAMove(data.move, data);
+                console.log(matchInfo);
                 updateStatus();
             };
         
@@ -81,9 +107,12 @@ export default function SquareStyles({matchInfo, userInfo}) {
         if(game.turn() === 'w') status.textContent = "Status: white to move";
         else status.textContent = "Status: black to move";
         if(game.in_check()) status.textContent += " / checked";
+
+        const roll_button = document.getElementById("roll_button");
+        roll_button.disabled = !roll_button.disabled;
     }
 
-    function increasePoints(move) {
+    async function increasePoints(move) {
         
         // If the move capture a piece
         if(move.flags === 'e' || move.flags === 'c' || move.flags === 'pc' || move.flags === 'cp') {
@@ -94,7 +123,14 @@ export default function SquareStyles({matchInfo, userInfo}) {
             if(piece == null) type = 'cp';
             else type = gameCopy.get(move.to).type;
             gameCopy.move(move);
-            matchInfo.my_points += piecePoints[type];
+            const match = await fetch(`http://localhost:8000/api/match/${userInfo.in_game}`, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+            const match_data = await match.json();
+            matchInfo.my_points = (playerTurn === 'w')? match_data.white_points : match_data.black_points;
             document.getElementById("my_points").textContent = `Your Points: ${matchInfo.my_points}`;
         }
     }
@@ -120,6 +156,7 @@ export default function SquareStyles({matchInfo, userInfo}) {
         socket.move.send(JSON.stringify({
             'player': userInfo.username,
             'fen': game.fen(),
+            'is_put': false,
             'move': move
         }));
         updateStatus();
@@ -160,8 +197,29 @@ export default function SquareStyles({matchInfo, userInfo}) {
         setOptionSquares(newSquares);
     }
 
-    function onSquareClick() {
+    function onSquareClick(square) {
         setRightClickedSquares({});
+        if(!randomPiece.selected_piece) return;
+        if(!game.get(square)) return
+        if(game.get(square).type !== 'p') return;
+        if(game.get(square).color !== playerTurn) return;
+        let piece = randomPiece.selected_piece;
+        piece = (playerTurn === 'w')? piece.toUpperCase() : piece;
+
+        socket.move.send(JSON.stringify({
+            'player': userInfo.username,
+            'fen': game.fen(),
+            'is_put': true,
+            'move': `SET ${square} ${piece}`
+        }));
+
+        randomPiece.selected_piece = null;
+        document.getElementById("selected_piece").textContent = `You are not picking`;
+
+        piece = piece.toLowerCase();
+        console.log(`piece_${piece}`);
+        selectPieceState[`set${piece}`]({state: selectPieceState[`${piece}`].number - 1 === 0, number: selectPieceState[`${piece}`].number - 1})
+
     }
 
     function onSquareRightClick(square) {

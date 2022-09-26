@@ -77,7 +77,16 @@ class MoveConsumer(AsyncWebsocketConsumer):
         match = Match.objects.get(id=int(self.room_name))
 
         game = GachaChess(match.fen, white_points=match.white_points, black_points=match.black_points)
-        game.move(chess.Move(chess.parse_square(move["from"]), chess.parse_square(move["to"])).uci())
+
+        if text_data_json["is_put"]:
+            piece = text_data_json["move"].split()[2].lower()
+            if game.current_turn() == chess.BLACK:
+                match.black_pocket[piece] -= 1
+            else:
+                match.white_pocket[piece] -= 1
+            game.move(move)
+        else:
+            game.move(chess.Move(chess.parse_square(move["from"]), chess.parse_square(move["to"])).uci())
 
 
         match.black_points = game.black_player.points
@@ -93,6 +102,7 @@ class MoveConsumer(AsyncWebsocketConsumer):
                 'type': 'chat_message',
                 'move': move,
                 'fen': match.fen,
+                'is_put': text_data_json["is_put"],
                 'player': text_data_json['player']
             }
         )
@@ -107,6 +117,7 @@ class MoveConsumer(AsyncWebsocketConsumer):
         await self.send(text_data=json.dumps({
             'move': move,
             'fen': game.board.fen(),
+            'is_put': event["is_put"],
             'player': event['player']
         }))
 
@@ -155,12 +166,12 @@ class RandomConsumer(AsyncWebsocketConsumer):
         match.black_points = game.black_player.points
         match.white_points = game.white_player.points
 
-        piece = chess.Piece(piece, game.current_turn()).symbol()
+        piece = chess.Piece(piece, False).symbol()
 
         if game.current_turn() == chess.WHITE:
-            match.white_pocket["pocket"].append(piece)
+            match.white_pocket[piece] += 1
         else:
-            match.black_pocket["pocket"].append(piece)
+            match.black_pocket[piece] += 1
 
         match.save()
 
@@ -172,6 +183,8 @@ class RandomConsumer(AsyncWebsocketConsumer):
                 'status': 'ok',
                 'piece': piece,
                 'player': text_data_json["player"],
+                'my_points': game.current_player().points,
+                'pocket': match.white_pocket[piece] if game.current_turn() == chess.WHITE else match.black_pocket[piece]
             }
         )
 

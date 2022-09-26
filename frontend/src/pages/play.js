@@ -205,8 +205,15 @@ function ShowBoard({userInfo}) {
     const GACHA_PRICE = 7;
     const { token, setToken } = useToken();
     const [info, setInfo] = useState({});
-    const [matchInfo, setMatchInfo] = useState({my_pocket: {pocket: []}});
+    const [matchInfo, setMatchInfo] = useState({my_pocket: {}});
     const socket = useRef({});
+    const randomPiece = useRef({});
+
+    let selectPieceState = {};
+    [selectPieceState.n, selectPieceState.setn] = useState({state: false, number: 0});
+    [selectPieceState.b, selectPieceState.setb] = useState({state: false, number: 0});
+    [selectPieceState.r, selectPieceState.setr] = useState({state: false, number: 0});
+    [selectPieceState.q, selectPieceState.setq] = useState({state: false, number: 0});
 
     useEffect(() => {
         let ignore = false;
@@ -249,6 +256,11 @@ function ShowBoard({userInfo}) {
                 my_pocket: (token.username === white_player.username)? match_data.white_pocket : match_data.black_pocket,
             });
 
+            const my_pocket = (token.username === white_player.username)? match_data.white_pocket : match_data.black_pocket;
+            for(const key of Object.keys(my_pocket)) {
+                selectPieceState[`set${key}`]({state: my_pocket[key] === 0, number: my_pocket[key]});
+            }
+
             // Initialize WebSocket
 
             socket.resign = new WebSocket(`ws://localhost:8000/ws/resign/${match_data.id}/`);
@@ -283,10 +295,20 @@ function ShowBoard({userInfo}) {
             // Player rolls a random piece
             socket.roll.onmessage = function(e) {
                 const data = JSON.parse(e.data);
+                if(data.status === "failed") return;
                 if(data.player === token.username) {
-                    console.log(data);
+                    document.getElementById("my_points").textContent = `Your Points: ${data.my_points}`;
+                    matchInfo.my_points = data.my_points;
+                    
+                    selectPieceState[`${data.piece}`].number = data.pocket;
+                    selectPieceState[`${data.piece}`].state = false;
+                    const new_state = {state: false, number: selectPieceState[`${data.piece}`].number};
+                    console.log(new_state);
+                    selectPieceState[`set${data.piece}`](new_state);
+
+                    console.log(selectPieceState);
+
                 } else {
-                    console.log(data);
                     console.log("Your opponent rolls a random piece");
                 }
             };
@@ -300,7 +322,6 @@ function ShowBoard({userInfo}) {
         fetchData();
         return () => { ignore = true; }        
     }, []);
-
     
 
     const resign = async (e) => {
@@ -336,6 +357,16 @@ function ShowBoard({userInfo}) {
         }));
     }
 
+    const handle_pick_piece = (e) => {
+        randomPiece.selected_piece = e.target.getAttribute("data-piece");
+        document.getElementById("selected_piece").textContent = `You are picking ${randomPiece.selected_piece}`;
+    }
+
+    const handle_cancel_select = (e) => {
+        randomPiece.selected_piece = null;
+        document.getElementById("selected_piece").textContent = `You are not picking`;
+    }
+
     return (
         <>
             <NavBar/>
@@ -347,7 +378,7 @@ function ShowBoard({userInfo}) {
                     <Col id="board_area" sm={8}>
                         {
                             (matchInfo.black_player)? 
-                                <Board matchInfo={matchInfo} userInfo={userInfo}/>
+                                <Board selectPieceState={selectPieceState} matchInfo={matchInfo} userInfo={userInfo} randomPiece={randomPiece}/>
                             :
                                 <center>
                                     <h3>Waiting for another player...</h3>
@@ -367,7 +398,7 @@ function ShowBoard({userInfo}) {
                                 <Card.Text id="status"> Status: white to move </Card.Text> 
                                 <center>
                                     <Card.Text id="my_points"> Your Points: {matchInfo.my_points} </Card.Text>
-                                    <Button onClick={rollRandomPiece}>Roll</Button>
+                                    <Button id="roll_button" onClick={rollRandomPiece}>Roll</Button>
                                 </center>
                                 <br></br>
                                 <Card.Text style={{ fontSize: "small" }}> Win (+102) / Lose (-13) / Draw (-1) </Card.Text> 
@@ -375,15 +406,30 @@ function ShowBoard({userInfo}) {
                         </Card>
 
                         <Card style={{ width: "70%", height: "20rem", margin: '10px' }} >
-                            <Card.Header>Your Pocket</Card.Header>
+                            <Card.Header>
+                                <Row>
+                                <Col sm={8} id="selected_piece">
+                                    You are not picking
+                                </Col>
+                                <Col sm={4}>
+                                    <Button variant="danger" style={{ float: "right"}} onClick={handle_cancel_select}><b>Cancel</b></Button>
+                                </Col>
+                                </Row>
+                                
+                            </Card.Header>
                             <Card.Body style={{ overflow: "auto" }}>
                                 {
-                                    matchInfo.my_pocket.pocket.map((piece, id) => {
+                                    Object.keys(matchInfo.my_pocket).map((key, id) => {
                                         return (
-                                            <Card.Text key={id}>{id + 1}. {piece}</Card.Text>
+                                            <Card.Text key={id}>
+                                                <Button data-piece={key} data-number={selectPieceState[`${key}`].number} disabled={selectPieceState[`${key}`].state} onClick={handle_pick_piece}>
+                                                    {key}: {selectPieceState[`${key}`].number}
+                                                </Button>
+                                            </Card.Text>
                                         )
                                     })
                                 }
+                                <Card.Text id="roll status"></Card.Text>
                             </Card.Body>
                         </Card>
                     </Col>

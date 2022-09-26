@@ -46,7 +46,6 @@ class GachaChess:
             return True
         try:
             if self.board.is_capture(chess.Move.from_uci(move_info)):
-                print("yo?")
                 self.current_player().points += ultils.PIECE_POINTS[self.board.piece_at(chess.Move.from_uci(move_info).to_square).symbol().lower()]
             self.history.append(self.board.fen())
             self.move_history.append(move_info)
@@ -129,13 +128,16 @@ class GachaChess:
     def replace_pawn(self, square: chess.Square, new_piece: chess.Piece) -> bool:
         replaced_piece = self.board.piece_at(square)
         if replaced_piece.piece_type != chess.PAWN:
+            print("Yo1")
             return False
         if replaced_piece.color != self.current_turn():
+            print("Yo2")
             return False
-        if replaced_piece not in self.current_player().gacha_pieces:
-            return False
+        # if replaced_piece not in self.current_player().gacha_pieces:
+        #     print("Yo3")
+        #     return False
         self.board.set_piece_at(square, new_piece)
-        self.current_player().gacha_pieces.remove(replaced_piece)
+        # self.current_player().gacha_pieces.remove(replaced_piece)
         self.skip_turn()
         return True
 

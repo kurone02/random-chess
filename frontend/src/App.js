@@ -26,9 +26,9 @@ function App() {
                                     <Card.Body>
                                         <Card.Title>How to use the website</Card.Title>
                                         <Card.Text>
-                                            Firstly, you need to create an account. <br/>
+                                            Firstly, you need to contact the admin to create an account. <br/>
                                             Then, you should sign in with your newly created account. <br/>
-                                            Finally, navigate to the <a href="#problems">problems</a> site and start coding. <br/>
+                                            Finally, navigate to the <a href="#play">Play</a> site and start playing. <br/>
                                         </Card.Text>
                                         <Button variant="primary" href="/signup">Click here to sign up!</Button>
                                     </Card.Body>
@@ -38,12 +38,12 @@ function App() {
 
                                 <Card style={{ width: '18rem' }}>
                                     <Card.Body>
-                                        <Card.Title>Welcome to UNICODE!</Card.Title>
+                                        <Card.Title>Welcome to RandomChess!</Card.Title>
                                         <Card.Text>
-                                            This is a decentralized coding platform. <br/>
-                                            Click the button below to start solving coding problems.
+                                            This is a variation of chess. <br/>
+                                            Click the button below to start playing.
                                         </Card.Text>
-                                        <Button variant="primary" href="/problems">Solve problems!</Button>
+                                        <Button variant="primary" href="/play">Play!</Button>
                                     </Card.Body>
                                 </Card>
                             </Col>
